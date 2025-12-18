@@ -1,0 +1,43 @@
+name: Build & Push Spring Boot Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  docker-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Extract release version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Build Maven artifact
+        run: mvn clean package -DskipTests
+
+      - name: Docker Hub login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+          -t ${{ secrets.DOCKER_USERNAME }}/springboot-docker-app:${{ env.VERSION }} \
+          -t ${{ secrets.DOCKER_USERNAME }}/springboot-docker-app:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/springboot-docker-app:${{ env.VERSION }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/springboot-docker-app:latest
